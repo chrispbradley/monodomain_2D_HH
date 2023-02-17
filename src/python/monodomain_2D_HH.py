@@ -59,6 +59,8 @@ cellMLStateFieldUserNumber = 7
 cellMLParametersFieldUserNumber = 8
 cellMLIntermediateFieldUserNumber = 9
 
+quit()
+
 context = iron.Context()
 context.Create(contextUserNumber)
 
