@@ -9,7 +9,7 @@ To start the simulation a stimulation is applied to the left half of the bottom 
 
 Running the example
 ===================
-Activate the openCMISS virtual environment for python bindings::
+Activate the OpenCMISS virtual environment for python bindings::
 
   source <path-to-opencmiss>/install/virtual_environments/oclibs_venv_py27_release/bin/activate
 

@@ -8,7 +8,7 @@ import random
 random.seed(100)
 
 # Intialise OpenCMISS
-from opencmiss.iron import iron
+from opencmiss.opencmiss import OpenCMISS_Python as oc
 #DOC-END imports
 
 # Set problem parameters
@@ -59,20 +59,27 @@ cellMLStateFieldUserNumber = 7
 cellMLParametersFieldUserNumber = 8
 cellMLIntermediateFieldUserNumber = 9
 
-quit()
+#quit()
 
-context = iron.Context()
+context = oc.Context()
 context.Create(contextUserNumber)
 
-worldRegion = iron.Region()
+worldRegion = oc.Region()
 context.WorldRegionGet(worldRegion)
+
+# Set the OpenCMISS random seed so that we can test this example by using the
+# same parallel decomposition
+numberOfRandomSeeds = context.RandomSeedsSizeGet()
+randomSeeds = [0]*numberOfRandomSeeds
+randomSeeds[0] = 100
+context.RandomSeedsSet(randomSeeds)
 
 #DOC-START parallel information
 # Get the number of computational nodes and this computational node number
-computationEnvironment = iron.ComputationEnvironment()
+computationEnvironment = oc.ComputationEnvironment()
 context.ComputationEnvironmentGet(computationEnvironment)
 
-worldWorkGroup = iron.WorkGroup()
+worldWorkGroup = oc.WorkGroup()
 computationEnvironment.WorldWorkGroupGet(worldWorkGroup)
 numberOfComputationalNodes = worldWorkGroup.NumberOfGroupNodesGet()
 computationalNodeNumber = worldWorkGroup.GroupNodeNumberGet()
@@ -80,13 +87,13 @@ computationalNodeNumber = worldWorkGroup.GroupNodeNumberGet()
 
 #DOC-START initialisation
 # Create a 2D rectangular cartesian coordinate system
-coordinateSystem = iron.CoordinateSystem()
+coordinateSystem = oc.CoordinateSystem()
 coordinateSystem.CreateStart(coordinateSystemUserNumber,context)
 coordinateSystem.DimensionSet(2)
 coordinateSystem.CreateFinish()
 
 # Create a region and assign the coordinate system to the region
-region = iron.Region()
+region = oc.Region()
 region.CreateStart(regionUserNumber,worldRegion)
 region.LabelSet("Region")
 region.coordinateSystem = coordinateSystem
@@ -95,38 +102,38 @@ region.CreateFinish()
 
 #DOC-START basis
 # Define a bilinear Lagrange basis
-basis = iron.Basis()
+basis = oc.Basis()
 basis.CreateStart(basisUserNumber,context)
-basis.type = iron.BasisTypes.LAGRANGE_HERMITE_TP
+basis.type = oc.BasisTypes.LAGRANGE_HERMITE_TP
 basis.numberOfXi = 2
-basis.interpolationXi = [iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*2
+basis.interpolationXi = [oc.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*2
 basis.quadratureNumberOfGaussXi = [3]*2
 basis.CreateFinish()
 #DOC-END basis
 
 #DOC-START generated mesh
 # Create a generated mesh
-generatedMesh = iron.GeneratedMesh()
+generatedMesh = oc.GeneratedMesh()
 generatedMesh.CreateStart(generatedMeshUserNumber,region)
-generatedMesh.type = iron.GeneratedMeshTypes.REGULAR
+generatedMesh.type = oc.GeneratedMeshTypes.REGULAR
 generatedMesh.basis = [basis]
 generatedMesh.extent = [width,height]
 generatedMesh.numberOfElements = [numberOfXElements,numberOfYElements]
 
-mesh = iron.Mesh()
+mesh = oc.Mesh()
 generatedMesh.CreateFinish(meshUserNumber,mesh)
 #DOC-END generated mesh
 
 #DOC-START decomposition
 # Create a decomposition for the mesh
-decomposition = iron.Decomposition()
+decomposition = oc.Decomposition()
 decomposition.CreateStart(decompositionUserNumber,mesh)
 decomposition.CreateFinish()
 #DOC-END decomposition
 
 #DOC-START decomposer
 # Decompose 
-decomposer = iron.Decomposer()
+decomposer = oc.Decomposer()
 decomposer.CreateStart(decomposerUserNumber,worldRegion,worldWorkGroup)
 decompositionIndex = decomposer.DecompositionAdd(decomposition)
 decomposer.CreateFinish()
@@ -134,13 +141,13 @@ decomposer.CreateFinish()
 
 #DOC-START geometry
 # Create a field for the geometry
-geometricField = iron.Field()
+geometricField = oc.Field()
 geometricField.CreateStart(geometricFieldUserNumber, region)
 geometricField.decomposition = decomposition
-geometricField.TypeSet(iron.FieldTypes.GEOMETRIC)
-geometricField.VariableLabelSet(iron.FieldVariableTypes.U, "coordinates")
-geometricField.ComponentMeshComponentSet(iron.FieldVariableTypes.U, 1, linearMeshComponentNumber)
-geometricField.ComponentMeshComponentSet(iron.FieldVariableTypes.U, 2, linearMeshComponentNumber)
+geometricField.TypeSet(oc.FieldTypes.GEOMETRIC)
+geometricField.VariableLabelSet(oc.FieldVariableTypes.U, "coordinates")
+geometricField.ComponentMeshComponentSet(oc.FieldVariableTypes.U, 1, linearMeshComponentNumber)
+geometricField.ComponentMeshComponentSet(oc.FieldVariableTypes.U, 2, linearMeshComponentNumber)
 geometricField.CreateFinish()
 
 # Set geometry from the generated mesh
@@ -149,11 +156,11 @@ generatedMesh.GeometricParametersCalculate(geometricField)
 
 #DOC-START equations set
 # Create the equations_set
-equationsSetField = iron.Field()
-equationsSet = iron.EquationsSet()
-equationsSetSpecification = [iron.EquationsSetClasses.BIOELECTRICS,
-        iron.EquationsSetTypes.MONODOMAIN_EQUATION,
-        iron.EquationsSetSubtypes.MONODOMAIN_CELLML]
+equationsSetField = oc.Field()
+equationsSet = oc.EquationsSet()
+equationsSetSpecification = [oc.EquationsSetClasses.BIOELECTRICS,
+        oc.EquationsSetTypes.MONODOMAIN_EQUATION,
+        oc.EquationsSetSubtypes.MONODOMAIN_CELLML]
 equationsSet.CreateStart(equationsSetUserNumber, region, geometricField,
         equationsSetSpecification, equationsSetFieldUserNumber, equationsSetField)
 equationsSet.CreateFinish()
@@ -161,23 +168,23 @@ equationsSet.CreateFinish()
 
 #DOC-START equations set fields
 # Create the dependent Field
-dependentField = iron.Field()
+dependentField = oc.Field()
 equationsSet.DependentCreateStart(dependentFieldUserNumber, dependentField)
 equationsSet.DependentCreateFinish()
 
 # Create the materials Field
-materialsField = iron.Field()
+materialsField = oc.Field()
 equationsSet.MaterialsCreateStart(materialsFieldUserNumber, materialsField)
 equationsSet.MaterialsCreateFinish()
 
 # Set the materials values
 # Set Am
-materialsField.ComponentValuesInitialise(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,1,Am)
+materialsField.ComponentValuesInitialise(oc.FieldVariableTypes.U,oc.FieldParameterSetTypes.VALUES,1,Am)
 # Set Cm
-materialsField.ComponentValuesInitialise(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,2,Cm)
+materialsField.ComponentValuesInitialise(oc.FieldVariableTypes.U,oc.FieldParameterSetTypes.VALUES,2,Cm)
 # Set conductivity
-materialsField.ComponentValuesInitialise(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,3,conductivity)
-materialsField.ComponentValuesInitialise(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,4,conductivity)
+materialsField.ComponentValuesInitialise(oc.FieldVariableTypes.U,oc.FieldParameterSetTypes.VALUES,3,conductivity)
+materialsField.ComponentValuesInitialise(oc.FieldVariableTypes.U,oc.FieldParameterSetTypes.VALUES,4,conductivity)
 #DOC-END equations set fields
 
 # Read the cellml file either as an argument (useful for testing) or hardcoded text.
@@ -188,7 +195,7 @@ else:
 
 #DOC-START create cellml environment
 # Create the CellML environment
-cellML = iron.CellML()
+cellML = oc.CellML()
 cellML.CreateStart(cellMLUserNumber, region)
 # Import the cell model from a file
 cellModel = cellML.ModelImport(cellmlFile)
@@ -211,52 +218,52 @@ cellML.CreateFinish()
 cellML.FieldMapsCreateStart()
 #Now we can set up the field variable component <--> CellML model variable mappings.
 #Map Vm
-cellML.CreateFieldToCellMLMap(dependentField,iron.FieldVariableTypes.U,1, iron.FieldParameterSetTypes.VALUES,cellModel,"membrane/V", iron.FieldParameterSetTypes.VALUES)
-cellML.CreateCellMLToFieldMap(cellModel,"membrane/V", iron.FieldParameterSetTypes.VALUES,dependentField,iron.FieldVariableTypes.U,1,iron.FieldParameterSetTypes.VALUES)
+cellML.CreateFieldToCellMLMap(dependentField,oc.FieldVariableTypes.U,1, oc.FieldParameterSetTypes.VALUES,cellModel,"membrane/V", oc.FieldParameterSetTypes.VALUES)
+cellML.CreateCellMLToFieldMap(cellModel,"membrane/V", oc.FieldParameterSetTypes.VALUES,dependentField,oc.FieldVariableTypes.U,1,oc.FieldParameterSetTypes.VALUES)
 
 #Finish the creation of CellML <--> OpenCMISS field maps
 cellML.FieldMapsCreateFinish()
 
 # Set the initial Vm values
-dependentField.ComponentValuesInitialise(iron.FieldVariableTypes.U, iron.FieldParameterSetTypes.VALUES, 1,-75)
+dependentField.ComponentValuesInitialise(oc.FieldVariableTypes.U, oc.FieldParameterSetTypes.VALUES, 1,-75)
 
 #DOC-END map Vm components
 
 #DOC-START define CellML models field
 #Create the CellML models field
-cellMLModelsField = iron.Field()
+cellMLModelsField = oc.Field()
 cellML.ModelsFieldCreateStart(cellMLModelsFieldUserNumber, cellMLModelsField)
 cellML.ModelsFieldCreateFinish()
 #DOC-END define CellML models field
 
 #DOC-START define CellML state field
 #Create the CellML state field
-cellMLStateField = iron.Field()
+cellMLStateField = oc.Field()
 cellML.StateFieldCreateStart(cellMLStateFieldUserNumber, cellMLStateField)
 cellML.StateFieldCreateFinish()
 #DOC-END define CellML state field
 
 #DOC-START define CellML parameters and intermediate fields
 #Create the CellML parameters field
-cellMLParametersField = iron.Field()
+cellMLParametersField = oc.Field()
 cellML.ParametersFieldCreateStart(cellMLParametersFieldUserNumber, cellMLParametersField)
 cellML.ParametersFieldCreateFinish()
 
 # Set the initial Cm values
-cmComponent = cellML.FieldComponentGet(cellModel, iron.CellMLFieldTypes.PARAMETERS, "membrane/Cm")
-cellMLParametersField.ComponentValuesInitialise(iron.FieldVariableTypes.U, iron.FieldParameterSetTypes.VALUES, cmComponent,Cm)
+cmComponent = cellML.FieldComponentGet(cellModel, oc.CellMLFieldTypes.PARAMETERS, "membrane/Cm")
+cellMLParametersField.ComponentValuesInitialise(oc.FieldVariableTypes.U, oc.FieldParameterSetTypes.VALUES, cmComponent,Cm)
 
 #  Create the CellML intermediate field
-cellMLIntermediateField = iron.Field()
+cellMLIntermediateField = oc.Field()
 cellML.IntermediateFieldCreateStart(cellMLIntermediateFieldUserNumber, cellMLIntermediateField)
 cellML.IntermediateFieldCreateFinish()
 #DOC-END define CellML parameters and intermediate fields
 
 # Create equations
-equations = iron.Equations()
+equations = oc.Equations()
 equationsSet.EquationsCreateStart(equations)
-equations.sparsityType = iron.EquationsSparsityTypes.SPARSE
-equations.outputType = iron.EquationsOutputTypes.NONE
+equations.sparsityType = oc.EquationsSparsityTypes.SPARSE
+equations.outputType = oc.EquationsOutputTypes.NONE
 equationsSet.EquationsCreateFinish()
 
 # Find the domains of the first and last nodes
@@ -266,47 +273,47 @@ firstNodeDomain = decomposition.NodeDomainGet(firstNodeNumber, 1)
 lastNodeDomain = decomposition.NodeDomainGet(lastNodeNumber, 1)
 
 # Set the stimulus on half the bottom nodes
-stimComponent = cellML.FieldComponentGet(cellModel, iron.CellMLFieldTypes.PARAMETERS, "membrane/i_Stim")
+stimComponent = cellML.FieldComponentGet(cellModel, oc.CellMLFieldTypes.PARAMETERS, "membrane/i_Stim")
 for node in range(1,int((numberOfXElements + 1)/2) + 1):
     nodeDomain = decomposition.NodeDomainGet(node,1)
     if nodeDomain == computationalNodeNumber:
-        cellMLParametersField.ParameterSetUpdateNode(iron.FieldVariableTypes.U, iron.FieldParameterSetTypes.VALUES, 1, 1, node, stimComponent, stimValue)
+        cellMLParametersField.ParameterSetUpdateNode(oc.FieldVariableTypes.U, oc.FieldParameterSetTypes.VALUES, 1, 1, node, stimComponent, stimValue)
 
 #DOC-START define monodomain problem
 #Define the problem
-problem = iron.Problem()
-problemSpecification = [iron.ProblemClasses.BIOELECTRICS,
-    iron.ProblemTypes.MONODOMAIN_EQUATION,
-    iron.ProblemSubtypes.MONODOMAIN_GUDUNOV_SPLIT]
+problem = oc.Problem()
+problemSpecification = [oc.ProblemClasses.BIOELECTRICS,
+    oc.ProblemTypes.MONODOMAIN_EQUATION,
+    oc.ProblemSubtypes.MONODOMAIN_GUDUNOV_SPLIT]
 problem.CreateStart(problemUserNumber,context,problemSpecification)
 problem.CreateFinish()
 #DOC-END define monodomain problem
 
 #Create the problem control loop
 problem.ControlLoopCreateStart()
-controlLoop = iron.ControlLoop()
-problem.ControlLoopGet([iron.ControlLoopIdentifiers.NODE],controlLoop)
+controlLoop = oc.ControlLoop()
+problem.ControlLoopGet([oc.ControlLoopIdentifiers.NODE],controlLoop)
 controlLoop.TimesSet(0.0,stimStop,pdeTimeStep)
-controlLoop.OutputTypeSet(iron.ControlLoopOutputTypes.TIMING)
+controlLoop.OutputTypeSet(oc.ControlLoopOutputTypes.TIMING)
 controlLoop.TimeOutputSet(outputFrequency)
 problem.ControlLoopCreateFinish()
 
 #Create the problem solvers
-daeSolver = iron.Solver()
-dynamicSolver = iron.Solver()
+daeSolver = oc.Solver()
+dynamicSolver = oc.Solver()
 problem.SolversCreateStart()
 # Get the first DAE solver
-problem.SolverGet([iron.ControlLoopIdentifiers.NODE],1,daeSolver)
+problem.SolverGet([oc.ControlLoopIdentifiers.NODE],1,daeSolver)
 daeSolver.DAETimeStepSet(odeTimeStep)
-daeSolver.OutputTypeSet(iron.SolverOutputTypes.NONE)
+daeSolver.OutputTypeSet(oc.SolverOutputTypes.NONE)
 # Get the second dynamic solver for the parabolic problem
-problem.SolverGet([iron.ControlLoopIdentifiers.NODE],2,dynamicSolver)
-dynamicSolver.OutputTypeSet(iron.SolverOutputTypes.NONE)
+problem.SolverGet([oc.ControlLoopIdentifiers.NODE],2,dynamicSolver)
+dynamicSolver.OutputTypeSet(oc.SolverOutputTypes.NONE)
 problem.SolversCreateFinish()
 
 #DOC-START define CellML solver
 #Create the problem solver CellML equations
-cellMLEquations = iron.CellMLEquations()
+cellMLEquations = oc.CellMLEquations()
 problem.CellMLEquationsCreateStart()
 daeSolver.CellMLEquationsGet(cellMLEquations)
 cellmlIndex = cellMLEquations.CellMLAdd(cellML)
@@ -314,15 +321,15 @@ problem.CellMLEquationsCreateFinish()
 #DOC-END define CellML solver
 
 #Create the problem solver PDE equations
-solverEquations = iron.SolverEquations()
+solverEquations = oc.SolverEquations()
 problem.SolverEquationsCreateStart()
 dynamicSolver.SolverEquationsGet(solverEquations)
-solverEquations.sparsityType = iron.SolverEquationsSparsityTypes.SPARSE
+solverEquations.sparsityType = oc.SolverEquationsSparsityTypes.SPARSE
 equationsSetIndex = solverEquations.EquationsSetAdd(equationsSet)
 problem.SolverEquationsCreateFinish()
 
 # Prescribe any boundary conditions
-boundaryConditions = iron.BoundaryConditions()
+boundaryConditions = oc.BoundaryConditions()
 solverEquations.BoundaryConditionsCreateStart(boundaryConditions)
 solverEquations.BoundaryConditionsCreateFinish()
 
@@ -334,7 +341,7 @@ for node in range(1,int((numberOfXElements + 1)/2) + 1):
 #for node in range(1,numberOfXElements+2):
     nodeDomain = decomposition.NodeDomainGet(node,1)
     if nodeDomain == computationalNodeNumber:
-        cellMLParametersField.ParameterSetUpdateNode(iron.FieldVariableTypes.U, iron.FieldParameterSetTypes.VALUES, 1, 1, node, stimComponent, 0.0)
+        cellMLParametersField.ParameterSetUpdateNode(oc.FieldVariableTypes.U, oc.FieldParameterSetTypes.VALUES, 1, 1, node, stimComponent, 0.0)
 
 #Set the time loop from stimStop to timeStop
 controlLoop.TimesSet(stimStop,timeStop,pdeTimeStep)
@@ -343,7 +350,7 @@ controlLoop.TimesSet(stimStop,timeStop,pdeTimeStep)
 problem.Solve()
 
 # Export the results, here we export them as standard exnode, exelem files
-fields = iron.Fields()
+fields = oc.Fields()
 fields.CreateRegion(region)
 fields.NodesExport("Monodomain","FORTRAN")
 fields.ElementsExport("Monodomain","FORTRAN")
